@@ -56,5 +56,10 @@ if ingredients_list:
         except Exception as e:
             st.error(f"Error occurred: {e}")
 
+import requests
+smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
+#st.text(smoothiefroot_response).json())
+sf_df = st.dataframe(data=smothiefroot_response.json(), use_container_width=True)
+
 
 
