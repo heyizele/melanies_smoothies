@@ -2,7 +2,6 @@
 import streamlit as st
 import pandas as pd
 import requests
-#from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
 
 # Write directly to the app
@@ -14,66 +13,58 @@ st.write(
 
 # Input for the name on the order
 name_on_order = st.text_input('Name on Smoothie:')
-st.write('The name on your Smoothie will be:', name_on_order)
+st.write(f"The name on your Smoothie will be: **{name_on_order}**")
 
 # Get the active Snowflake session
 cnx = st.connection("snowflake")
 session = cnx.session()
-#session = get_active_session()
 
 # Retrieve available fruits from the Snowflake table
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME')).to_pandas()
-#st.dataframe(data=my_dataframe, use_container_width=True)
-#st.stop()
-
-pd_df=my_dataframe.to_pandas()
-#st.dataframe(pd_df)
-#st.stop()
+try:
+    my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON')).to_pandas()
+except Exception as e:
+    st.error(f"Error retrieving fruit options: {e}")
+    st.stop()
 
 # Multiselect for choosing ingredients
 ingredients_list = st.multiselect(
     'Choose up to 5 ingredients:',
-    options=my_dataframe['FRUIT_NAME'].tolist(),  # Convert column to a list for selection
+    options=my_dataframe['FRUIT_NAME'].tolist(),
     max_selections=5
 )
 
-if ingredients_list:    
-    ingredients_string = ''
-    #ingredients_string = ', '.join(ingredients_list)
-    
+if ingredients_list:
+    ingredients_string = ', '.join(ingredients_list)  # Combine selected ingredients into a single string
+
     for fruit_chosen in ingredients_list:
-        ingredients_string += fruit_chosen + ' '
+        # Retrieve the 'SEARCH_ON' value for the selected fruit
+        try:
+            search_on = my_dataframe.loc[my_dataframe['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
+        except IndexError:
+            search_on = "Not found"
 
-        search_on=pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
-        #st.write('The search value for ', fruit_chosen,' is ', search_on, '.')
-
-        st.subheader(fruit_chosen + ' Nutrition Information')
-        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + search_on)
-        fv_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
-
-    # Debugging statement (optional)
-    # st.write(f"Selected ingredients: {ingredients_string}")
-
-    # Construct the SQL INSERT statement
-    my_insert_stmt = f"""
-        INSERT INTO smoothies.public.orders (ingredients, name_on_order)
-        VALUES ('{ingredients_string}', '{name_on_order}')
-    """
-
-    # Debugging statement (optional)
-    # st.write(f"SQL Query: {my_insert_stmt}")
+        # Nutrition Information Section
+        st.subheader(f"{fruit_chosen} Nutrition Information")
+        try:
+            smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{search_on}")
+            if smoothiefroot_response.status_code == 200:
+                nutrition_data = pd.DataFrame(smoothiefroot_response.json())  # Convert JSON response to DataFrame
+                st.dataframe(nutrition_data, use_container_width=True)  # Display as a table
+            else:
+                st.write(f"⚠️ No nutrition information found for {fruit_chosen}.")
+        except Exception as e:
+            st.error(f"Error retrieving nutrition data for {fruit_chosen}: {e}")
 
     # Submit order button
-    time_to_insert = st.button('Submit Order')
-    
-    if time_to_insert:
+    if st.button('Submit Order'):
+        # Construct the SQL INSERT statement
+        my_insert_stmt = f"""
+            INSERT INTO smoothies.public.orders (ingredients, name_on_order)
+            VALUES ('{ingredients_string}', '{name_on_order}')
+        """
         try:
             # Execute the SQL query
             session.sql(my_insert_stmt).collect()
             st.success('Your Smoothie is ordered!', icon="✅")
         except Exception as e:
-            st.error(f"Error occurred: {e}")
-
-#import requests
-#smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
-#sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+            st.error(f"Error occurred while submitting the order: {e}")
