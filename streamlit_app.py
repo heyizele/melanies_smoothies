@@ -1,5 +1,6 @@
 # Import python packages
 import streamlit as st
+import requests
 #from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
 
@@ -30,8 +31,12 @@ ingredients_list = st.multiselect(
 )
 
 if ingredients_list:        
-    # Join selected fruits into a single string
     ingredients_string = ', '.join(ingredients_list)
+    
+    for fruit_chosen in ingredients-list:
+        ingredients_string += fruit_chosen + ' '
+        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
+        sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
 
     # Debugging statement (optional)
     # st.write(f"Selected ingredients: {ingredients_string}")
@@ -56,10 +61,9 @@ if ingredients_list:
         except Exception as e:
             st.error(f"Error occurred: {e}")
 
-import requests
-smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
-#st.text(smoothiefroot_response).json())
-sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+#import requests
+#smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
+#sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
 
 
 
