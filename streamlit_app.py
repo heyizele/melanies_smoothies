@@ -1,5 +1,6 @@
 # Import python packages
 import streamlit as st
+import Pandas as pd
 import requests
 #from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
@@ -22,6 +23,8 @@ session = cnx.session()
 
 # Retrieve available fruits from the Snowflake table
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME')).to_pandas()
+st.dataframe(data=my_dataframe, use_container_width=True)
+st.stop()
 
 # Multiselect for choosing ingredients
 ingredients_list = st.multiselect(
