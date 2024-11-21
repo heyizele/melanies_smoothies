@@ -15,6 +15,10 @@ st.write(
 name_on_order = st.text_input('Name on Smoothie:')
 st.write(f"The name on your Smoothie will be: **{name_on_order}**")
 
+# New Input: Radio button for the 'order_filled' status
+order_filled = st.radio("Mark order as filled?", options=[False, True], index=0)
+st.write(f"Order will be marked as: **{'Filled' if order_filled else 'Not Filled'}**")
+
 # Get the active Snowflake session
 cnx = st.connection("snowflake")
 session = cnx.session()
@@ -59,8 +63,8 @@ if ingredients_list:
     if st.button('Submit Order'):
         # Construct the SQL INSERT statement
         my_insert_stmt = f"""
-            INSERT INTO smoothies.public.orders (ingredients, name_on_order)
-            VALUES ('{ingredients_string}', '{name_on_order}')
+            INSERT INTO smoothies.public.orders (ingredients, name_on_order, order_filled)
+            VALUES ('{ingredients_string}', '{name_on_order}', {order_filled})
         """
         try:
             # Execute the SQL query
