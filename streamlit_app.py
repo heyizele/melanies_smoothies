@@ -7,8 +7,7 @@ from snowflake.snowpark.functions import col
 # Write directly to the app
 st.title(":cup_with_straw: Customize Your Smoothie! :cup_with_straw:")
 st.write(
-    """Choose the fruits you want in your custom Smoothie!
-    """
+    """Choose the fruits you want in your custom Smoothie! Follow the instructions for Kevin, Divya, and Xi orders below."""
 )
 
 # Input for the name on the order
@@ -32,7 +31,7 @@ except Exception as e:
 
 # Multiselect for choosing ingredients
 ingredients_list = st.multiselect(
-    'Choose up to 5 ingredients:',
+    'Choose up to 5 ingredients (e.g., Apples, Lime, Ximenia):',
     options=my_dataframe['FRUIT_NAME'].tolist(),
     max_selections=5
 )
@@ -73,3 +72,12 @@ if ingredients_list:
         except Exception as e:
             st.error(f"Error occurred while submitting the order: {e}")
 
+# Display user instructions
+st.write(
+    """
+    ### Instructions for Final Orders:
+    1. **Kevin**: Use fruits "Apples, Lime, Ximenia" in that order. Do NOT mark as filled.
+    2. **Divya**: Use fruits "Dragon Fruit, Guava, Figs, Jackfruit, Blueberries" in that order. Mark as FILLED.
+    3. **Xi**: Use fruits "Vanilla Fruit, Nectarine" in that order. Mark as FILLED.
+    """
+)
