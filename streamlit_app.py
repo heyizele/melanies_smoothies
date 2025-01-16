@@ -2,38 +2,50 @@ import streamlit as st
 import requests
 import pandas as pd
 
-# Title for the app
-st.title("Smoothie Ordering App")
+# App Header
+st.title("🍓 Smoothie Ordering App")
+st.subheader("Customize your smoothie by selecting your favorite ingredients!")
 
-# User input for ingredients
-ingredients_input = st.text_input("Enter ingredients for your smoothie (comma-separated):")
+# Smoothie Ingredients Input
+ingredients_input = st.text_input(
+    "Enter ingredients for your smoothie (comma-separated):",
+    placeholder="e.g., banana, strawberry, mango"
+)
 
+# Display ingredient list when user inputs data
 if ingredients_input:
-    # Split the input into a list of ingredients
     ingredients_list = [ingredient.strip() for ingredient in ingredients_input.split(",")]
     
-    st.write("Your selected ingredients are:")
-    st.write(ingredients_list)
-    
-    # Loop through the ingredients and fetch data for each
+    st.write("### Selected Ingredients:")
+    st.write(", ".join(ingredients_list))
+
+    # Fetch and display data for each ingredient
+    st.write("### Nutritional Information:")
     for fruit_chosen in ingredients_list:
-        st.write(f"Fetching data for {fruit_chosen}...")
-        
-        # Fetch data from the API
+        st.write(f"Fetching data for **{fruit_chosen}**...")
         try:
             response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{fruit_chosen}")
             
             if response.status_code == 200:
-                # Display the data in a dataframe
                 fruit_data = response.json()
-                st.dataframe(data=fruit_data, use_container_width=True)
+                fruit_df = pd.DataFrame([fruit_data])  # Convert JSON response to DataFrame
+                st.dataframe(fruit_df, use_container_width=True)
             else:
-                st.error(f"Failed to fetch data for {fruit_chosen}. Status code: {response.status_code}")
+                st.warning(f"No data available for **{fruit_chosen}** (Status code: {response.status_code})")
         
         except Exception as e:
-            st.error(f"An error occurred while fetching data for {fruit_chosen}: {e}")
+            st.error(f"Error fetching data for **{fruit_chosen}**: {e}")
 
-# Option to insert data
-time_to_insert = st.checkbox("Ready to insert order?")
-if time_to_insert:
-    st.success("Your order has been successfully placed!")
+# Order Placement Section
+st.divider()
+st.write("### Ready to Place Your Order?")
+if st.button("Place Order"):
+    if ingredients_input:
+        st.success("✅ Your order has been successfully placed!")
+        st.balloons()
+    else:
+        st.error("❌ Please add ingredients to place your order.")
+
+# Footer
+st.divider()
+st.caption("Made with ❤️ using Streamlit")
