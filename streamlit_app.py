@@ -64,3 +64,8 @@ try:
 
 except Exception as e:
     st.error(f"Error connecting to Snowflake: {e}")
+
+# New section to display smoothiefroot nutrition information
+import requests
+smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
+st.text(smoothiefroot_response)
