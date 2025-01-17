@@ -30,7 +30,10 @@ try:
         ).collect()
 
         # Map FRUIT_NAME to SEARCH_ON for easy lookup
-        fruit_map = {row['FRUIT_NAME']: row['SEARCH_ON'] for row in my_dataframe}
+        fruit_map = {
+            row['FRUIT_NAME']: row['SEARCH_ON'] if row['SEARCH_ON'] else row['FRUIT_NAME']
+            for row in my_dataframe
+        }
         fruit_options = list(fruit_map.keys())  # Extract display names
     except Exception as e:
         st.error(f"Error fetching fruit options: {e}")
@@ -81,9 +84,7 @@ try:
             """
 
             # Submit the order
-            time_to_insert = st.button('Submit Order')
-
-            if time_to_insert:
+            if st.button('Submit Order'):
                 try:
                     session.sql(my_insert_stmt).collect()
                     # Personalized success message
