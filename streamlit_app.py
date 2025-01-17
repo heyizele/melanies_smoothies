@@ -24,21 +24,15 @@ try:
 
     # Fetch fruit options from the database
     try:
-        # Select both FRUIT_NAME and SEARCH_ON for display and API lookup
-        my_dataframe = session.table("fruit_options").select(
-            col('FRUIT_NAME'), col('SEARCH_ON')
-        ).collect()
+        # Convert the Snowpark DataFrame to a Pandas DataFrame for easier handling
+        pd_df = session.table("fruit_options").to_pandas()
 
-        # Map FRUIT_NAME to SEARCH_ON for easy lookup
-        fruit_map = {
-            row['FRUIT_NAME']: row['SEARCH_ON'] if row['SEARCH_ON'] else row['FRUIT_NAME']
-            for row in my_dataframe
-        }
-        fruit_options = list(fruit_map.keys())  # Extract display names
+        # Use Pandas DataFrame to get fruit names and their corresponding search terms
+        fruit_options = pd_df['FRUIT_NAME'].tolist()
     except Exception as e:
         st.error(f"Error fetching fruit options: {e}")
-        fruit_options = {}
-        fruit_map = {}
+        pd_df = None
+        fruit_options = []
 
     # Allow the user to select up to 5 ingredients
     ingredients_list = st.multiselect(
@@ -55,20 +49,20 @@ try:
         # Loop through selected fruits to fetch nutrition info
         for fruit_chosen in ingredients_list:
             # Use the SEARCH_ON value for the API call
-            search_term = fruit_map.get(fruit_chosen, fruit_chosen)  # Default to name if not mapped
-            st.subheader(f"{fruit_chosen} Nutrition Information")  # Show the user-friendly name
-
             try:
+                search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
+                st.subheader(f"{fruit_chosen} Nutrition Information")
+
                 # Make the API call using the search term
-                smoothiefroot_response = requests.get(
-                    f"https://my.smoothiefroot.com/api/fruit/{search_term.lower()}"
+                fruityvice_response = requests.get(
+                    f"https://fruityvice.com/api/fruit/{search_on}"
                 )
-                smoothiefroot_response.raise_for_status()  # Raise exception for HTTP errors
+                fruityvice_response.raise_for_status()  # Raise exception for HTTP errors
 
                 # Display the nutrition information in a table
-                st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+                st.dataframe(data=fruityvice_response.json(), use_container_width=True)
                 valid_ingredients.append(fruit_chosen)  # Add to valid ingredients list
-            except requests.exceptions.RequestException:
+            except (requests.exceptions.RequestException, IndexError):
                 # If the fruit isn't in the database, display a warning and track it
                 st.warning(f"Information for '{fruit_chosen}' could not be fetched. It will not be included in your smoothie.")
                 missing_fruits.append(fruit_chosen)
