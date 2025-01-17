@@ -42,8 +42,7 @@ try:
     )
 
     if ingredients_list:
-        # Variables to track valid ingredients and errors
-        valid_ingredients = []
+        # Variables to track missing fruits
         missing_fruits = []
 
         # Loop through selected fruits to fetch nutrition info
@@ -61,39 +60,34 @@ try:
 
                 # Display the nutrition information in a table
                 st.dataframe(data=fruityvice_response.json(), use_container_width=True)
-                valid_ingredients.append(fruit_chosen)  # Add to valid ingredients list
             except (requests.exceptions.RequestException, IndexError):
-                # If the fruit isn't in the database, display a warning and track it
-                st.warning(f"Information for '{fruit_chosen}' could not be fetched. It will not be included in your smoothie.")
+                # If the fruit isn't in the database, display a warning
+                st.warning(f"Information for '{fruit_chosen}' could not be fetched. It will still be included in your smoothie.")
                 missing_fruits.append(fruit_chosen)
 
-        # Combine the valid ingredients into a string
-        ingredients_string = ', '.join(valid_ingredients)
+        # Combine the chosen ingredients (including missing fruits) into a string
+        ingredients_string = ', '.join(ingredients_list)
 
-        if valid_ingredients:
-            # Corrected SQL statement with explicit column names
-            my_insert_stmt = f"""
-                INSERT INTO smoothies.public.orders (ingredients, name_on_order)
-                VALUES ('{ingredients_string}', '{name_on_order}')
-            """
+        # Corrected SQL statement with explicit column names
+        my_insert_stmt = f"""
+            INSERT INTO smoothies.public.orders (ingredients, name_on_order)
+            VALUES ('{ingredients_string}', '{name_on_order}')
+        """
 
-            # Submit the order
-            if st.button('Submit Order'):
-                try:
-                    session.sql(my_insert_stmt).collect()
-                    # Personalized success message
-                    st.success(
-                        f"Your Smoothie '{name_on_order}' is ordered with the following ingredients: {ingredients_string}!",
-                        icon="✅"
-                    )
-                    # Display missing fruits, if any
-                    if missing_fruits:
-                        st.info(f"The following fruits were excluded from your smoothie due to missing data: {', '.join(missing_fruits)}")
-                except Exception as e:
-                    st.error(f"Error submitting the order: {e}")
-        else:
-            st.error("No valid fruits were selected for your smoothie. Please choose different fruits.")
-
+        # Submit the order
+        if st.button('Submit Order'):
+            try:
+                session.sql(my_insert_stmt).collect()
+                # Personalized success message
+                st.success(
+                    f"Your Smoothie '{name_on_order}' is ordered with the following ingredients: {ingredients_string}!",
+                    icon="✅"
+                )
+                # Display missing fruits, if any
+                if missing_fruits:
+                    st.info(f"The following fruits have missing nutritional data but are still included in your smoothie: {', '.join(missing_fruits)}")
+            except Exception as e:
+                st.error(f"Error submitting the order: {e}")
     else:
         st.info("Select up to 5 ingredients to create your smoothie.")
 
