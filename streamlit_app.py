@@ -47,4 +47,4 @@ if ingredients_list:
             icon="✅"
         )
 else:
-    st.info("Select up to 5 ingredients to create your smoothie.")
+    st.info("Select up to 5 ingredients to create your smoothie.") 
