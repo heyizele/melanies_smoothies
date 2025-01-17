@@ -24,11 +24,18 @@ try:
 
     # Fetch fruit options from the database
     try:
-        my_dataframe = session.table("fruit_options").select(col('FRUIT_NAME')).collect()
-        fruit_options = [row['FRUIT_NAME'] for row in my_dataframe]  # Extract fruit names as a list
+        # Select both FRUIT_NAME and SEARCH_ON for display and API lookup
+        my_dataframe = session.table("fruit_options").select(
+            col('FRUIT_NAME'), col('SEARCH_ON')
+        ).collect()
+
+        # Map FRUIT_NAME to SEARCH_ON for easy lookup
+        fruit_map = {row['FRUIT_NAME']: row['SEARCH_ON'] for row in my_dataframe}
+        fruit_options = list(fruit_map.keys())  # Extract display names
     except Exception as e:
         st.error(f"Error fetching fruit options: {e}")
-        fruit_options = []
+        fruit_options = {}
+        fruit_map = {}
 
     # Allow the user to select up to 5 ingredients
     ingredients_list = st.multiselect(
@@ -44,16 +51,17 @@ try:
 
         # Loop through selected fruits to fetch nutrition info
         for fruit_chosen in ingredients_list:
-            # Display the subheader for the fruit
-            st.subheader(f"{fruit_chosen} Nutrition Information")
-            
-            # Make the API call for each fruit
+            # Use the SEARCH_ON value for the API call
+            search_term = fruit_map.get(fruit_chosen, fruit_chosen)  # Default to name if not mapped
+            st.subheader(f"{fruit_chosen} Nutrition Information")  # Show the user-friendly name
+
             try:
+                # Make the API call using the search term
                 smoothiefroot_response = requests.get(
-                    f"https://my.smoothiefroot.com/api/fruit/{fruit_chosen.lower()}"
+                    f"https://my.smoothiefroot.com/api/fruit/{search_term.lower()}"
                 )
                 smoothiefroot_response.raise_for_status()  # Raise exception for HTTP errors
-                
+
                 # Display the nutrition information in a table
                 st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
                 valid_ingredients.append(fruit_chosen)  # Add to valid ingredients list
