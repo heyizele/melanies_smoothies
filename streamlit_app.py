@@ -1,51 +1,72 @@
+# Import Python packages
 import streamlit as st
-import requests
-import pandas as pd
+from snowflake.snowpark.session import Session
+from snowflake.snowpark.functions import col
 
-# App Header
-st.title("🍓 Smoothie Ordering App")
-st.subheader("Customize your smoothie by selecting your favorite ingredients!")
+# Write directly to the app
+st.title(":cup_with_straw: Customize your Smoothie! :cup_with_straw:")
+st.write("Choose the fruits you want in your custom smoothie!")
 
-# Smoothie Ingredients Input
-ingredients_input = st.text_input(
-    "Enter ingredients for your smoothie (comma-separated):",
-    placeholder="e.g., banana, strawberry, mango"
-)
+# Input for smoothie name
+name_on_order = st.text_input('Name of Smoothie:')
+st.write('The name of your Smoothie will be:', name_on_order)
 
-# Display ingredient list when user inputs data
-if ingredients_input:
-    ingredients_list = [ingredient.strip() for ingredient in ingredients_input.split(",")]
-    
-    st.write("### Selected Ingredients:")
-    st.write(", ".join(ingredients_list))
+# Connect to Snowflake session
+try:
+    # Read Snowflake connection details from Streamlit secrets
+    conn_params = st.secrets["connections"]["snowflake"]
+    session = Session.builder.configs(conn_params).create()
 
-    # Fetch and display data for each ingredient
-    st.write("### Nutritional Information:")
-    for fruit_chosen in ingredients_list:
-        st.write(f"Fetching data for **{fruit_chosen}**...")
-        try:
-            response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{fruit_chosen}")
-            
-            if response.status_code == 200:
-                fruit_data = response.json()
-                fruit_df = pd.DataFrame([fruit_data])  # Convert JSON response to DataFrame
-                st.dataframe(fruit_df, use_container_width=True)
-            else:
-                st.warning(f"No data available for **{fruit_chosen}** (Status code: {response.status_code})")
-        
-        except Exception as e:
-            st.error(f"Error fetching data for **{fruit_chosen}**: {e}")
+    # Ensure correct database and schema are used
+    session.sql("USE DATABASE smoothies").collect()
+    session.sql("USE SCHEMA public").collect()
 
-# Order Placement Section
-st.divider()
-st.write("### Ready to Place Your Order?")
-if st.button("Place Order"):
-    if ingredients_input:
-        st.success("✅ Your order has been successfully placed!")
-        st.balloons()
+    # Fetch fruit options from the database
+    try:
+        my_dataframe = session.table("fruit_options").select(col('FRUIT_NAME')).collect()
+        fruit_options = [row['FRUIT_NAME'] for row in my_dataframe]  # Extract fruit names as a list
+    except Exception as e:
+        st.error(f"Error fetching fruit options: {e}")
+        fruit_options = []
+
+    # Allow the user to select up to 5 ingredients
+    ingredients_list = st.multiselect(
+        'Choose up to 5 ingredients:',
+        fruit_options,
+        max_selections=5  # Enforce a maximum selection of 5
+    )
+
+    if ingredients_list:
+        # Combine the ingredients into a string
+        ingredients_string = ', '.join(ingredients_list)
+
+        # Corrected SQL statement with explicit column names
+        my_insert_stmt = f"""
+            INSERT INTO smoothies.public.orders (ingredients, name_on_order)
+            VALUES ('{ingredients_string}', '{name_on_order}')
+        """
+
+        # Submit the order
+        time_to_insert = st.button('Submit Order')
+
+        if time_to_insert:
+            try:
+                session.sql(my_insert_stmt).collect()
+                # Personalized success message
+                st.success(
+                    f"Your Smoothie '{name_on_order}' is ordered with the following ingredients: {ingredients_string}!",
+                    icon="✅"
+                )
+            except Exception as e:
+                st.error(f"Error submitting the order: {e}")
     else:
-        st.error("❌ Please add ingredients to place your order.")
+        st.info("Select up to 5 ingredients to create your smoothie.")
 
-# Footer
-st.divider()
-st.caption("Made with ❤️ using Streamlit")
+except Exception as e:
+    st.error(f"Error connecting to Snowflake: {e}")
+
+
+import requests
+smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
+sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+
