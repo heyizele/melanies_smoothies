@@ -38,11 +38,12 @@ try:
     )
 
     if ingredients_list:
-        # Create ingredients string and display nutrition information for each selected fruit
-        ingredients_string = ''
-        for fruit_chosen in ingredients_list:
-            ingredients_string += fruit_chosen + ', '
+        # Variables to track valid ingredients and errors
+        valid_ingredients = []
+        missing_fruits = []
 
+        # Loop through selected fruits to fetch nutrition info
+        for fruit_chosen in ingredients_list:
             # Display the subheader for the fruit
             st.subheader(f"{fruit_chosen} Nutrition Information")
             
@@ -52,31 +53,44 @@ try:
                     f"https://my.smoothiefroot.com/api/fruit/{fruit_chosen.lower()}"
                 )
                 smoothiefroot_response.raise_for_status()  # Raise exception for HTTP errors
+                
                 # Display the nutrition information in a table
                 st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
-            except requests.exceptions.RequestException as e:
-                st.error(f"Error fetching nutrition info for {fruit_chosen}: {e}")
+                valid_ingredients.append(fruit_chosen)  # Add to valid ingredients list
+            except requests.exceptions.RequestException:
+                # If the fruit isn't in the database, display a warning and track it
+                st.warning(f"Information for '{fruit_chosen}' could not be fetched. It will not be included in your smoothie.")
+                missing_fruits.append(fruit_chosen)
 
-        # Corrected SQL statement with explicit column names
-        ingredients_string = ingredients_string.strip(', ')  # Remove trailing comma
-        my_insert_stmt = f"""
-            INSERT INTO smoothies.public.orders (ingredients, name_on_order)
-            VALUES ('{ingredients_string}', '{name_on_order}')
-        """
+        # Combine the valid ingredients into a string
+        ingredients_string = ', '.join(valid_ingredients)
 
-        # Submit the order
-        time_to_insert = st.button('Submit Order')
+        if valid_ingredients:
+            # Corrected SQL statement with explicit column names
+            my_insert_stmt = f"""
+                INSERT INTO smoothies.public.orders (ingredients, name_on_order)
+                VALUES ('{ingredients_string}', '{name_on_order}')
+            """
 
-        if time_to_insert:
-            try:
-                session.sql(my_insert_stmt).collect()
-                # Personalized success message
-                st.success(
-                    f"Your Smoothie '{name_on_order}' is ordered with the following ingredients: {ingredients_string}!",
-                    icon="✅"
-                )
-            except Exception as e:
-                st.error(f"Error submitting the order: {e}")
+            # Submit the order
+            time_to_insert = st.button('Submit Order')
+
+            if time_to_insert:
+                try:
+                    session.sql(my_insert_stmt).collect()
+                    # Personalized success message
+                    st.success(
+                        f"Your Smoothie '{name_on_order}' is ordered with the following ingredients: {ingredients_string}!",
+                        icon="✅"
+                    )
+                    # Display missing fruits, if any
+                    if missing_fruits:
+                        st.info(f"The following fruits were excluded from your smoothie due to missing data: {', '.join(missing_fruits)}")
+                except Exception as e:
+                    st.error(f"Error submitting the order: {e}")
+        else:
+            st.error("No valid fruits were selected for your smoothie. Please choose different fruits.")
+
     else:
         st.info("Select up to 5 ingredients to create your smoothie.")
 
